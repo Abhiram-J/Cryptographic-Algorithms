@@ -33,7 +33,7 @@ string decToBin(int n)
 	}
 	while (bin.size() < 4) bin = '0' + bin;
 	return bin;
-}
+} 
 
 string binToHex(string s)
 {
@@ -84,12 +84,6 @@ string hexToBin(string s)
 		case 'D': bin += "1101"; break;
 		case 'E': bin += "1110"; break;
 		case 'F': bin += "1111"; break;
-        case 'a': bin += "1010"; break;
-		case 'b': bin += "1011"; break;
-		case 'c': bin += "1100"; break;
-		case 'd': bin += "1101"; break;
-		case 'e': bin += "1110"; break;
-		case 'f': bin += "1111"; break;
 
 		}
 	}
@@ -97,9 +91,8 @@ string hexToBin(string s)
 }
 
 
-class DES_Encryption
+class DES_Decryption
 {
-
 	// constants regarding the keys
 
 	const int permutationConstant_1[56] = {  57 ,49 ,41 ,33 ,25 ,17 ,9  ,
@@ -250,10 +243,9 @@ class DES_Encryption
 		return decToBin(Sbox[k][dec1][dec2]);
 	}
 
-
 public:
 
-	string encrypt( string& plain_txt,  string& key)
+	string decrypt( string& cipher_txt, string& key)
 	{
 		// making sub-keys
 
@@ -274,28 +266,34 @@ public:
 
 		string key_48[16], keys_56[16];
 
-		for (int i = 0; i < 16; i++) keys_56[i] = L_key[i] + R_key[i]; // making 56 bits keys
-		
+		for (int i = 0; i < 16; i++)
+		{
+			keys_56[i] = L_key[i] + R_key[i]; // making 56 bits keys
+		}
 		for (int i = 0; i < 16; i++)
 		{
 			key_48[i] = "";
 			for (int j = 0; j < 48; j++) key_48[i] += keys_56[i][permutationConstant_2[j] - 1]; // making 48 bits keys
 		}
 
-		// working on the plain text
+        // key swapper
 
-		string plain_txt_64 = hexToBin(plain_txt); 
+        for ( int i = 0 ; i < 8 ; i++){
+            swap(key_48[i], key_48[15-i]);
+        }
 
-		string initialPermutation = ""; 
+		string cipher_txt_64 = hexToBin(cipher_txt); 
+
+		string initialPermutation = "";
 
 		for (int i = 0; i < 64; i++)
-			initialPermutation += plain_txt_64[initialPermutationTable[i] - 1];
+			initialPermutation += cipher_txt_64[initialPermutationTable[i] - 1];
 
-		string L = initialPermutation.substr(0,32), R = initialPermutation.substr(32,32);
+		string L = initialPermutation.substr(0,32), R =initialPermutation.substr(32,32);
 
 		string L_32[16], R_32[16];
 		string R_xor_K[16];
-		string R_48[16]; 
+		string R_48[16];
 		string S_R[16], s[16][8];
 		string s_1[16];
 		string P_R[16]; 
@@ -304,9 +302,9 @@ public:
 		for (int j = 0; j < 48; j++)
 			R_48[0] += R[expansionTable[j] - 1];
 
-		R_xor_K[0] = xor_add(R_48[0], key_48[0]); 
+		R_xor_K[0] = xor_add(R_48[0], key_48[0]);
 
-		for (int j = 0; j < 48; j += 6)
+		for (int j = 0; j < 48; j += 6) 
 			for (int k = j; k < j + 6; k++)
 				s[0][j / 6] += R_xor_K[0][k];
 
@@ -318,8 +316,6 @@ public:
 			P_R[0] += s_1[0][P[j] - 1];
 
 		
-		cout << "Middle texts are " << newl << newl;
-		cout << binToHex(L) << "  "<< binToHex(R) << newl;
 
 		L_32[0] = R;
 		R_32[0] = "";
@@ -349,20 +345,29 @@ public:
 
 		}
 
-		for (int i = 0; i < 16; i++)
-			cout << binToHex(L_32[i]) << "  "<< binToHex(R_32[i]) << newl;
-		cout << newl;
-
-		string encryptedBin = "", RL;
-
+		string decryptedBin = "", RL;
 		RL = R_32[15] + L_32[15];
 
-		for (int i = 0; i < 64; i++) encryptedBin += RL[P_1[i] - 1];
+		for (int i = 0; i < 64; i++) decryptedBin += RL[P_1[i] - 1];
+		string plain_txt = binToHex(decryptedBin);
 
-        string cipher_txt = binToHex(encryptedBin);
+        return plain_txt;
 
-		return cipher_txt;
+	}
+	
+	string hex_to_string( string& in) {
+		string output;
+		int cnt = in.length() / 2;
 
+		for (int i = 0; cnt > i; ++i) {
+			int s = 0;
+			stringstream ss;
+			ss << hex << in.substr(i * 2, 2);
+			ss >> s;
+			output.push_back(static_cast<unsigned char>(s));
+		}
+
+		return output;
 	}
 
 
@@ -372,30 +377,36 @@ public:
 
 int32_t main()
 {
-	string file = "ciphertxt.txt";
 
-    DES_Encryption DES;
-	string plain_txt, key, cipher_txt;
+    DES_Decryption DES;
+	string cipher_txt, key, plain_txt,M;
 
-	cout << newl << "Enter plain text in hexadecimal of 16 characters " << newl;
-	cin >> plain_txt;
-	cout << newl;
-	cout << "Enter key in hexadecimal of 16 characters " << newl;
+    cout << newl << "Enter the cipher text " << newl ;
+    cin >> cipher_txt;
+
+	cout << newl << "Enter key in hexadecimal of 16 characters " << newl;
     cin >> key;
 	cout << newl;
-	cout << "Encrypting..." << newl;
+
+	for (int i = 0; i < key.size(); i++) key[i] = toupper(key[i]);
+
+	cout << "Decrypting..." << newl;
 	cout << newl;
 	sleep(1);
-	cipher_txt = DES.encrypt(plain_txt, key);
-	cout << "Cipher text is " << newl;
-    cout << cipher_txt << newl;
+
+    for(int i = 0; i <cipher_txt.size(); i+=16){
+        string subcipher = cipher_txt.substr(i,16);
+        plain_txt += DES.decrypt(subcipher,key);
+    }
+
+	M = DES.hex_to_string(plain_txt);
+
+    cout << "The message is " << newl;
+	for (int i = 0; i < M.size(); i++) {
+		if (M[i] == '.') continue;
+		else cout << M[i];
+	}
 	cout << newl;
-
-	sleep(1);
-	cout << "Succesfully written cipher text to file " << file << newl << newl;
-
-	freopen((file).c_str(), "w", stdout);
-	cout << cipher_txt ;
 
 	return 0;
 }
